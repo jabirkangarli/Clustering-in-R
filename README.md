@@ -24,3 +24,15 @@ Attribute 5 : Number of reviews on theatres, exhibitions, etc.
 Attribute 6 : Number of reviews on malls, shopping places, etc.
 
 Attribute 7 : Number of reviews on parks, picnic spots, etc.
+
+
+
+Sources:
+Jacek Lewkowicz. Unsupervised Learning. Presentation from the classes.
+
+Introduction to statistical data analysis with R. Matthias Kohl. Furtwangen University.
+
+https://cran.r-project.org/web/packages/clusterSim/clusterSim.pdf
+
+Data - UCI Machine Learning Repository: https://archive.ics.uci.edu/ml/datasets/BuddyMove+Data+Set#
+
