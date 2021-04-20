@@ -1,0 +1,470 @@
+---
+title: "Clustering Analysis"
+author: "Jabir Kangarli"
+data:
+output:
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+This dataset was populated from destination reviews published by 249 reviewers of holidayiq.com till October 2014. Reviews are split into 6 categories among destinations across South India were considered and the count of reviews in each category for every reviewer (traveler) is captured.
+
+Attribute Information:
+  
+Attribute 1 : Unique user id
+
+Attribute 2 : Number of reviews on stadiums, sports complex, etc.
+
+Attribute 3 : Number of reviews on religious institutions
+
+Attribute 4 : Number of reviews on beach, lake, river, etc.
+
+Attribute 5 : Number of reviews on theatres, exhibitions, etc.
+
+Attribute 6 : Number of reviews on malls, shopping places, etc.
+
+Attribute 7 : Number of reviews on parks, picnic spots, etc.
+
+# Data
+```{r error=FALSE, warning=FALSE, message=FALSE}
+library(tidyverse) 
+library(cluster)
+library(factoextra)
+library(dplyr)
+library(NbClust)
+
+bm <- read.csv("~\\db\\buddymove_holidayiq.csv")
+head(bm)
+```
+
+## 1. Selection of objects and variables
+
+```{r}
+bm_reviews <- bm[,2:7]
+head(bm_reviews)
+```
+
+## 2. Basic statistical applications
+
+Applying basic statistics before implementing k-means to check to scale the data or not.
+
+```{r}
+stats <- data.frame(
+  Min = apply(bm_reviews, 2, min),      # minimum 
+  Med = apply(bm_reviews, 2, median),   # median 
+  Mean = apply(bm_reviews, 2, mean),    # mean
+  SD = apply(bm_reviews, 2, sd),        # standard deviation
+  Max = apply(bm_reviews, 2, max)       # maximum
+)
+stats <- round(stats, 1)
+head(stats)
+
+```
+
+So, here the minimum and maximum value of the sport is less than the rest. Therefore, we have to scale the data.
+
+```{r}
+bm_scaled <- scale(bm_reviews)
+head(bm_scaled)
+
+stats<- data.frame(
+  Min = apply(bm_scaled, 2, min),               # minimum
+  Med = apply(bm_scaled, 2, median),            # median
+  Mean = apply(bm_scaled, 2, mean),             # mean
+  SD = apply(bm_scaled, 2, sd),                 # Standard deviation
+  Max = apply(bm_scaled, 2, max)                # maximum
+)
+stats <- round(stats, 1)
+head(stats)
+```
+
+# Clustering
+
+Initializing total within the sum of squares error: wss
+```{r}
+wss <- 0
+
+# For 1 to 15 cluster centers
+for (i in 1:15) {
+  kmn <- kmeans(bm_scaled, centers = i, nstart = 20)
+# Saving the total within sum of squares to wss variable
+  wss[i] <- kmn$tot.withinss
+}
+```
+
+## 1. Determining the number of clusters
+
+Plot total within the sum of squares vs. number of clusters
+```{r}
+plot(1:15, wss, type = "b", 
+     xlab = "Number of Clusters", 
+     ylab = "Within groups sum of squares")
+```
+
+Based on the plot, we can say that the elbow where the quality improves slowly as the k (number of clusters) increases, which means since the model complexity increases, the quality of the model is no longer improving. 
+
+Let's do it with fviz_nbclust() to see the optimum number of clusters.
+```{r}
+# wss - within-cluster sum of squares
+fviz_nbclust(bm_scaled, kmeans, method="wss") 
+```
+
+We will check the silhouette method as it measures the quality of a cluster. For instance, how well each point lies within its cluster.
+```{r}
+fviz_nbclust(bm_scaled, kmeans, method="silhouette")
+```
+
+Moreover, we can also use GAP statistics to determine the number of clusters
+```{r}
+gapstat <- clusGap(bm_scaled,FUN = kmeans,K.max = 25,B = 100)
+fviz_gap_stat(gapstat)
+```
+
+According to gap statistics, the optimal number of clusters is 3, however, since our dataset is not big, I will use two clusters as the silhouette method suggested.
+
+## 2. Choice of classification methods
+
+### 2.1 K-means
+
+Let's choose 2 clusters and execute them.
+```{r}
+k <- 2
+kmean <- kmeans(bm_scaled,centers = 2,nstart = 25)
+```
+
+Visualization of the cluster plot
+```{r}
+fviz_cluster(kmean, data = bm_scaled)
+```
+
+Now, let's check the number of observations in each cluster
+``` {r}
+kmean$size
+```
+
+Total SSE of the clusters and each cluster respectively. SSE stands for Sum of Squared Error
+```{r}
+print(kmean$tot.withinss)
+
+print(kmean$withinss)
+```
+
+```{r}
+for(i in 1:3)
+{
+  print(i)
+  print(which(kmean$cluster==i))
+}
+```
+
+In cluster one, the users who have given more reviews about nature and picnic are clustered together. It is obvious that people enjoy nature prefer to spend more time with family having picnics. For instance, for cluster points 73,84,94 nature and picnic values are high than the rest. So they are clustered together. Something I found out interesting was the users who rated can be mothers/women of the family. I say so because the ratings on Religious, Shopping, and Picnic are specifically high.
+
+In cluster two, the sports ratings play a role. If we can see the clusters more in detail, we can find the users who prefer watching movies and sports on tv than outdoors.
+
+### 2.2 Hierarchical clustering
+
+Now we will upload the data once again, and execute operations on Hierarchical clustering.
+```{r}
+set.seed(1122)
+DataSet <- read.csv("~\\db\\buddymove_holidayiq.csv")
+DataSet
+SubSet<-sample_n(DataSet, 50)
+rownames(SubSet)<-SubSet$User.Id
+SubSet<-SubSet[2:7]
+SubSet
+```
+
+We have to scale the data as before.
+```{r}
+x1<-scale(SubSet)
+head(x1)
+```
+
+
+
+### 2.2.1 Method comparisons.
+
+By using linkage methods, we will compare the results. 
+
+Let's check the dissimilarity matrix
+```{r}
+dis_mat <- dist(x1, method = "euclidean")
+
+comp_linkage <- hclust(dis_mat, method = "complete")
+
+# dendogram
+plot(comp_linkage, cex = 0.6, hang = -1)
+```
+
+We may also check the same with the function called ```agnes()```.
+```{r}
+comp_linkage2 <- agnes(x1, method = "complete")
+
+# to check the agglomerative coefficient
+comp_linkage2$ac
+```
+
+The closer the result to 1, the stronger it is. Generally, we want the agglomerative coefficient to get as high as possible close to one.
+
+Let's now  check multiple methods such as Average, Single, Ward.
+
+```{r}
+m_methods <- c("average", "single", "complete", "ward")
+
+names(m_methods) <- c("average", "single", "complete", "ward")
+
+# to measure the coefficiency
+coeff <- function(y) {
+  agnes(x1, method = y)$ac
+}
+
+map_dbl(m_methods, coeff)
+
+comp_linkage3 <- agnes(x1, method = "ward")
+pltree(comp_linkage3, cex = 0.6, hang = -1, main = "Agnes Dendrogram")
+
+```
+
+Since we want it to be as close as possible to one, ward method seems the best. Furthermore, we see that the dendogram result gives us pretty different output from our starting point.
+
+
+
+On the other hand, we may try the divisive hierarchical clustering. At first glance the output seems the same but the logic is completely different. 
+```{r}
+comp_linkage4 <- diana(x1)
+# To find the amount of clustering structure, we should use divisive coefficient
+comp_linkage4$dc
+# dendrogram
+pltree(comp_linkage4, cex = 0.6, hang = -1, main = "Diana Dendrogram")
+```
+
+```{r}
+comp_linkage5 <- hclust(dis_mat, method = "ward.D2" )
+# cut tree into 4 groups
+sub_grp <- cutree(comp_linkage5, k = 2)
+
+table(sub_grp)
+```
+
+```{r}
+# plots with borders
+plot(comp_linkage5, cex = 0.6)
+rect.hclust(comp_linkage5, k = 2, border = 2:5)
+```
+
+We may also plot the dendogram using triangles and it is much more informative.
+
+To make it a little bit more comparable, even though Hierarchical clustering has very clear output, we might consider to make it a bit more comparable and using other algorithms.
+```{r}
+fviz_cluster(list(data = x1, cluster = sub_grp))
+```
+
+```{r}
+# cut agnes() tree into 2 groups
+clinkage_agnes <- agnes(x1, method = "ward")
+cutree(as.hclust(clinkage_agnes), k = 2)
+
+# cut diana() tree into 2 groups
+clinkage_diana <- diana(x1)
+cutree(as.hclust(clinkage_diana), k = 2)
+```
+
+The according number under the user ID shows in which clusters users are located. Then we may compare some dendograms by linking labels. But again, we have to compute distance matrix, then compute two hierarchical methods and create two dendograms that you may compare. 
+
+```{r}
+res.dist <- dist(x1, method = "euclidean")
+
+# compute 2 hierarchical clusterings
+hc1 <- hclust(res.dist, method = "complete")
+hc2 <- hclust(res.dist, method = "ward.D2")
+
+# create two dendrograms
+dend1 <- as.dendrogram (hc1)
+dend2 <- as.dendrogram (hc2)
+
+#install.packages("dendextend")
+library(dendextend)
+tanglegram(dend1, dend2)
+```
+
+Based on the dendogram, we can say that our output is stable and we can easily move to another method to compare.
+
+```{r}
+complete_linkage<- eclust(x1, "hclust", hc_method = "complete",k=1)
+fviz_dend(complete_linkage, show_labels=T, palette="jco")
+```
+
+```{r}
+single_linkage<- eclust(x1, "hclust", hc_method = "single",k=1)
+
+fviz_dend(single_linkage, show_labels=T, palette="jco",main='Single Linkage')
+```
+
+
+Average linkage
+```{r}
+average_linkage<- eclust(x1 ,"hclust", hc_method ="average",k=1)
+
+fviz_dend(average_linkage ,show_labels=T,palette="jco", main='Average Linkage')
+```
+
+
+
+```{r}
+#cutree(single linkage)
+cutree(single_linkage, h=1.7)
+plot(single_linkage)
+abline(h=1.7, col="red")
+```
+
+```{r}
+complete_linkage2 <- eclust(x1, "hclust", hc_method = "complete", k=2)
+fviz_dend(complete_linkage2, show_labels = T, palette = "jco")
+```
+
+
+```{r}
+single_linkage2 <- eclust(x1, "hclust", hc_method = "single", k = 2)
+fviz_dend(single_linkage2, sshow_labels = T, palette = "jco")
+```
+
+```{r}
+average_linkage2 <- eclust(x1, "hclust", hc_method = "average", k = 2)
+fviz_dend(average_linkage2, show_labels = T, palette = "jco")
+```
+
+Statistics of methods:
+```{r}
+complete_statistics <- fpc::cluster.stats(dist(x1), complete_linkage2$cluster)
+complete_statistics$avg.silwidth
+```
+
+```{r}
+single_statistics2 <-fpc::cluster.stats(dist(x1), single_linkage2$cluster)
+single_statistics2$avg.silwidth
+```
+
+```{r}
+average_statistics <- fpc::cluster.stats(dist(x1), average_linkage2$cluster)
+average_statistics$avg.silwidth
+```
+
+According to the average silhouette index, the average linkage is the best.
+
+```{r}
+#install.packages("NbClust")
+library(NbClust)
+NbClust(x1, method = "complete")
+```
+
+```{r}
+NbClust(x1,method = "single")
+```
+
+```{r}
+NbClust(x1, method = "average")
+```
+
+```{r}
+plot(silhouette(cutree(complete_linkage2,2),dist(x1)))
+```
+
+```{r}
+plot(silhouette(cutree(single_linkage2,2),dist(x1)))
+```
+
+```{r}
+plot(silhouette(cutree(average_linkage2,2),dist(x1)))
+```
+
+Based on purity, the lowest number of singleton nodes gives us complete linkage as the best. The clustering performed with NbClust() gave us a good silhouette index for average_linkage. The higher the silhouette index, the good structure is present for clusters. According to this assumption, I think Average linkage will be suitable for the dataset since it clusters properly and gives us a better structure.
+
+### 2.3 CLARA 
+
+Let's read the dataset again, choose proper columns, and implement the CLARA algorithm.
+
+```{r}
+df <- read.csv("~\\db\\buddymove_holidayiq.csv")
+df <- df[2:7]
+```
+
+As we did before, we need to scale the data once again.
+```{r}
+df_scaled <- scale(df)
+head(df_scaled)
+```
+
+Now, we can assign two clusters and execute them.
+```{r}
+clara_flex <- eclust(df_scaled, "clara", k=2)
+summary(clara_flex)
+fviz_cluster(clara_flex)
+fviz_silhouette(clara_flex)
+```
+
+Since we have the silhouette results, we can say that the one is close to 1 has the highest quality which means here the first cluster has the highest quality with average silhouette width of 0.50. And we have a lot of errors/probable mistakes in cluster number 2. When the silhouette width for a particular object is close to zero, this is like a boundary line. We are not sure how to assign this. On the other hand, when the index is less than zero, it means that we did a mistake. 
+
+I will use another approach with 2 clusters and 6 samples specified by using Euclidean distance.
+```{r}
+clara_clust <- clara(df_scaled, 2, metric = "euclidean", stand = FALSE, samples = 6,
+                     sampsize = 50, trace = 0, medoids.x = TRUE,
+                     rngR = FALSE, pamLike = FALSE, correct.d = TRUE)
+class(clara_clust)
+clara_clust
+```
+
+Visualization of the results
+```{r}
+fviz_cluster(clara_clust, geom = "point", ellipse.type = "norm")
+fviz_cluster(clara_clust, palette = c("#00AFBB", "#FC4E07", "#E7B800"), ellipse.type = "t", geom = "point", pointsize = 1, ggtheme = theme_classic())
+fviz_silhouette(clara_clust)
+```
+
+According to the silhouette measure, we can say that the first cluster is the best one so far with a 0.35 average silhouette index width.
+
+# Summary
+
+In conclusion, based on the aforementioned results of different types of clustering algorithms, we conclude that CLARA gave us the best result so far when compared with others with average silhouette width of 0.34.
+
+--------------------------------------------------------------------------------------------------------------------------------------
+# Sources:
+
+1. *Jacek Lewkowicz. Unsupervised Learning. Presentation from the classes.*
+
+2. *Introduction to statistical data analysis with R. Matthias Kohl. Furtwangen University.*
+
+3. *https://cran.r-project.org/web/packages/clusterSim/clusterSim.pdf*
+  
+4. Data - UCI Machine Learning Repository: *https://archive.ics.uci.edu/ml/datasets/BuddyMove+Data+Set#* 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
