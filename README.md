@@ -1,7 +1,7 @@
 # Clustering-in-R
 
 
-## Introduction
+# Introduction
 
 This project prepared as part of the subject, Unsupervised Learning, on my Master Studies. The goals of assessment: learning about distance-based clustering methods, as well as k-means methods, Hierarchical and CLARA (Clustering Large Applications) algorithms, learning the methods of determining the optimal number of clusters, acquiring knowledge in the field of unsupervised learning, learning about the tools used for unsupervised learning, practical data analysis using the unsupervised learning approach.
 
@@ -27,7 +27,7 @@ Attribute 7 : Number of reviews on parks, picnic spots, etc.
 
 
 
-Sources:
+# Sources:
 Jacek Lewkowicz. Unsupervised Learning. Presentation from the classes.
 
 Introduction to statistical data analysis with R. Matthias Kohl. Furtwangen University.
